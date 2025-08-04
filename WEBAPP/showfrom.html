@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+
+
+
+
+    
+    <title>แสดงแบบฟอร์มที่บันทึกแล้ว</title>
+    <!-- Tailwind CSS CDN เพื่อการออกแบบที่สวยงามและรวดเร็ว -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Firebase SDKs สำหรับการเชื่อมต่อฐานข้อมูล -->
+    <script type="module">
+        // นำเข้าโมดูล Firebase ที่จำเป็น
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // กำหนดตัวแปร global เพื่อให้โค้ด JavaScript ด้านล่างเรียกใช้งานได้
+        window.firebase = {
+            initializeApp,
+            getAuth,
+            signInAnonymously,
+            signInWithCustomToken,
+            getFirestore,
+            collection,
+            getDocs,
+            query
+        };
+    </script>
+    <style>
+        /* กำหนดฟอนต์ Inter และการจัดพื้นฐาน */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6; /* สีพื้นหลังอ่อนๆ */
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 md:p-8">
+
+    <!-- Container หลักที่ใช้แสดงผลทั้งหมด -->
+    <div class="w-full max-w-4xl">
+        
+        <!-- ส่วนหัวข้อหลักและปุ่มกลับ -->
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-4xl font-extrabold text-gray-900">แบบฟอร์มของคุณ</h1>
+            <a href="index.html" class="py-2 px-4 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition duration-300">
+                กลับหน้าสร้างแบบฟอร์ม
+            </a>
+        </div>
+
+        <!-- ส่วนที่ใช้แสดงข้อความแจ้งเตือน -->
+        <div id="messageBox" class="p-4 rounded-lg mb-6 text-center bg-green-100 text-green-700 font-medium">
+            บันทึกแบบฟอร์มสำเร็จ!
+        </div>
+
+        <!-- แสดง User ID ของผู้ใช้ปัจจุบัน -->
+        <div class="mb-4 text-gray-600 text-sm">
+            **User ID:** <span id="userIdDisplay" class="font-mono bg-gray-200 px-2 py-1 rounded-md text-gray-800">...</span>
+        </div>
+
+        <!-- ส่วนแสดงผลแบบฟอร์ม -->
+        <div class="bg-white p-6 rounded-xl shadow-md mb-6">
+            <h2 id="formTitleDisplay" class="text-3xl font-bold text-gray-800 mb-4"></h2>
+            <div id="sectionsDisplayContainer">
+                <!-- เนื้อหาแบบฟอร์มจะถูกสร้างด้วย JavaScript -->
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // โหลดโค้ดจาก Firebase SDK ที่เตรียมไว้
+            const {
+                initializeApp,
+                getAuth,
+                signInAnonymously,
+                signInWithCustomToken,
+                getFirestore,
+                collection,
+                getDocs,
+                query
+            } = window.firebase;
+            
+            // ตรวจสอบ global variables ที่จำเป็นสำหรับการเชื่อมต่อ Firebase
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+            const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+            if (!firebaseConfig) {
+                console.error("Firebase config is missing.");
+                return;
+            }
+
+            // เริ่มต้น Firebase และสร้าง instance ของ Auth กับ Firestore
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
+            let userId = null;
+
+            // ส่วนของ Element ที่เราจะใช้งาน
+            const messageBox = document.getElementById('messageBox');
+            const formTitleDisplay = document.getElementById('formTitleDisplay');
+            const sectionsDisplayContainer = document.getElementById('sectionsDisplayContainer');
+            const userIdDisplay = document.getElementById('userIdDisplay');
+
+            // ฟังก์ชันสำหรับแสดงข้อความแจ้งเตือน
+            function showMessage(text, isError = false) {
+                messageBox.textContent = text;
+                messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+                if (isError) {
+                    messageBox.classList.add('bg-red-100', 'text-red-700');
+                } else {
+                    messageBox.classList.add('bg-green-100', 'text-green-700');
+                }
+            }
+
+            // ฟังก์ชันสำหรับแสดงผลแบบฟอร์มที่โหลดมา
+            function renderSavedForm(formTitle, sections) {
+                formTitleDisplay.textContent = formTitle;
+                sectionsDisplayContainer.innerHTML = ''; // เคลียร์เนื้อหาเก่า
+                
+                if (sections.length === 0) {
+                    sectionsDisplayContainer.innerHTML = '<p class="text-gray-500">ไม่พบข้อมูลในแบบฟอร์มนี้</p>';
+                    return;
+                }
+
+                sections.forEach((section, sectionIndex) => {
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.className = 'bg-gray-100 p-4 rounded-lg shadow-sm mt-4';
+                    
+                    sectionDiv.innerHTML = `
+                        <h3 class="text-xl font-semibold text-gray-800 mb-2">${sectionIndex + 1}. ${section.title || 'หัวข้อไม่มีชื่อ'}</h3>
+                        <div class="questions-list space-y-3"></div>
+                    `;
+                    
+                    const questionsList = sectionDiv.querySelector('.questions-list');
+                    section.questions.forEach((question, questionIndex) => {
+                        const questionDiv = document.createElement('div');
+                        questionDiv.className = 'bg-white p-3 rounded-md border border-gray-200';
+                        questionDiv.innerHTML = `
+                            <p class="font-medium text-gray-700">${questionIndex + 1}. ${question.text}</p>
+                            <!-- สามารถเพิ่มส่วน input สำหรับตอบคำถามได้ที่นี่หากต้องการ -->
+                        `;
+                        questionsList.appendChild(questionDiv);
+                    });
+
+                    sectionsDisplayContainer.appendChild(sectionDiv);
+                });
+            }
+
+            // ฟังก์ชันหลักในการดึงข้อมูลจาก Firestore
+            async function fetchAndDisplayForm() {
+                try {
+                    // ลงชื่อเข้าใช้ด้วยโทเค็นที่ Canvas จัดเตรียมไว้
+                    if (initialAuthToken) {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    
+                    userId = auth.currentUser.uid;
+                    userIdDisplay.textContent = userId;
+
+                    // อ้างอิงถึง collection ที่เก็บแบบฟอร์ม
+                    const formsCollectionRef = collection(db, `artifacts/${appId}/users/${userId}/forms`);
+                    const q = query(formsCollectionRef);
+                    const querySnapshot = await getDocs(q);
+
+                    if (querySnapshot.empty) {
+                        // ถ้าไม่มีข้อมูลเลย
+                        formTitleDisplay.textContent = 'ไม่พบแบบฟอร์มที่บันทึกไว้';
+                        sectionsDisplayContainer.innerHTML = '<p class="text-gray-500">กรุณาไปที่หน้าสร้างแบบฟอร์มเพื่อเริ่มสร้าง</p>';
+                        messageBox.classList.add('hidden');
+                        return;
+                    }
+
+                    // ดึงข้อมูลทั้งหมดออกมาแล้วเรียงลำดับตามเวลาล่าสุด
+                    const allForms = querySnapshot.docs.map(doc => ({
+                        ...doc.data(),
+                        timestamp: doc.data().timestamp.toDate() // แปลง Timestamp จาก Firebase เป็น object Date
+                    }));
+                    
+                    allForms.sort((a, b) => b.timestamp - a.timestamp);
+                    
+                    // นำข้อมูลจากฟอร์มล่าสุดไปแสดงผล
+                    const latestForm = allForms[0];
+                    renderSavedForm(latestForm.formTitle, latestForm.sections);
+
+                } catch (error) {
+                    console.error("Error fetching form:", error);
+                    showMessage('เกิดข้อผิดพลาดในการโหลดแบบฟอร์ม', true);
+                    formTitleDisplay.textContent = 'ไม่สามารถโหลดแบบฟอร์มได้';
+                    sectionsDisplayContainer.innerHTML = '';
+                }
+            }
+
+            // เรียกใช้ฟังก์ชันหลักเมื่อหน้าเว็บโหลดเสร็จ
+            fetchAndDisplayForm();
+        });
+
+        
+
+    </script>
+
+        <a href="index.html">หน้าแรก /</a>
+        <a href="from.html">สร้างฟอร์ม</a>
+        <a href="showfrom.html">แสดงฟอร์ม</a>
+</body>
+</body>
+</html>

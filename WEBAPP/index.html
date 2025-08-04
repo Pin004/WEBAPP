@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สร้างแบบฟอร์ม</title>
+    <!-- โหลด Tailwind CSS CDN สำหรับการจัดสไตล์ที่สวยงาม -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #e0e7f0 100%);
+            min-height: 100vh;
+        }
+        /* Style for the floating message box */
+        #messageBox {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            padding: 12px 24px;
+            border-radius: 9999px; /* rounded-full */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease-in-out;
+            opacity: 0;
+            visibility: hidden;
+        }
+        #messageBox.active {
+            opacity: 1;
+            visibility: visible;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center p-6">
+
+    <!-- กล่องข้อความแจ้งเตือน (ซ่อนไว้เริ่มต้น) -->
+    <div id="messageBox" class="text-sm font-semibold text-center"></div>
+
+    <!-- ส่วนหลักของเว็บที่ใช้แสดงผล (เข้าสู่ระบบหรือสร้างฟอร์ม) -->
+    <div id="mainContainer" class="w-full max-w-7xl flex flex-col items-center">
+
+      
+            <!-- ฟอร์มเข้าสู่ระบบ (แสดงผลเริ่มต้น) -->
+            <div id="loginFormContainer" class="space-y-6">
+                <h2 class="text-3xl font-extrabold text-center text-gray-800">เข้าสู่ระบบ</h2>
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label for="login_email" class="block text-gray-700 font-medium mb-1">อีเมล</label>
+                        <input type="email" id="login_email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300">
+                    </div>
+                    <div>
+                        <label for="login_password" class="block text-gray-700 font-medium mb-1">รหัสผ่าน</label>
+                        <input type="password" id="login_password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300">
+                    </div>
+                    <button type="submit" class="w-full py-3 mt-6 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105">
+                        เข้าสู่ระบบ
+                    </button>
+                </form>
+                <p class="text-center mt-4 text-gray-600">
+                    ยังไม่มีบัญชีใช่ไหม? <a href="#" id="showRegister" class="text-blue-600 hover:underline font-medium">สมัครสมาชิกที่นี่</a>
+                </p>
+            </div>
+
+            <!-- ฟอร์มสมัครสมาชิก (ซ่อนไว้เริ่มต้น) -->
+            <div id="registerFormContainer" class="hidden space-y-6">
+                <h2 class="text-3xl font-extrabold text-center text-gray-800">สมัครสมาชิก</h2>
+                <form id="registrationForm" class="space-y-4">
+                    <div>
+                        <label for="register_email" class="block text-gray-700 font-medium mb-1">อีเมล</label>
+                        <input type="email" id="register_email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300">
+                    </div>
+                    <div>
+                        <label for="register_password" class="block text-gray-700 font-medium mb-1">รหัสผ่าน</label>
+                        <input type="password" id="register_password" name="password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300">
+                    </div>
+                    <div>
+                        <label for="confirm_password" class="block text-gray-700 font-medium mb-1">ยืนยันรหัสผ่าน</label>
+                        <input type="password" id="confirm_password" name="confirm_password" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300">
+                    </div>
+                    <button type="submit" class="w-full py-3 mt-6 bg-green-600 text-white font-bold rounded-lg shadow-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-300 transform hover:scale-105">
+                        สมัครสมาชิก
+                    </button>
+                </form>
+              
+
+    <!-- JavaScript สำหรับการจัดการทั้งหมด -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ส่วนของ Element ที่เราจะใช้งาน
+            const authContainer = document.getElementById('authContainer');
+            const formCreatorContainer = document.getElementById('formCreatorContainer');
+            const loginFormContainer = document.getElementById('loginFormContainer');
+            const registerFormContainer = document.getElementById('registerFormContainer');
+            const showRegisterBtn = document.getElementById('showRegister');
+            const showLoginBtn = document.getElementById('showLogin');
+            const registrationForm = document.getElementById('registrationForm');
+            const loginForm = document.getElementById('loginForm');
+            const logoutBtn = document.getElementById('logoutBtn');
+            const messageBox = document.getElementById('messageBox');
+            const formTitleInput = document.getElementById('formTitleInput');
+            const sectionsContainer = document.getElementById('sectionsContainer');
+            const addSectionBtn = document.getElementById('addSectionBtn');
+            const saveFormBtn = document.getElementById('saveFormBtn');
+            const saveStatusMessage = document.getElementById('saveStatusMessage');
+
+            // ส่วนของตัวแปรสถานะ
+            let isLoggedIn = false;
+            let isRegistering = false;
+            let formTitle = '';
+            let sections = [
+                { title: '', questions: [{ text: '' }] }
+            ];
+
+            // ฟังก์ชันสำหรับแสดงข้อความแจ้งเตือนทั่วไป
+            function showMessage(text, isError = false) {
+                messageBox.textContent = text;
+                messageBox.classList.remove('bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700');
+                messageBox.classList.add('active');
+                if (isError) {
+                    messageBox.classList.add('bg-red-100', 'text-red-700');
+                } else {
+                    messageBox.classList.add('bg-green-100', 'text-green-700');
+                }
+                setTimeout(() => {
+                    hideMessage();
+                }, 3000);
+            }
+
+            // ฟังก์ชันสำหรับซ่อนข้อความแจ้งเตือน
+            function hideMessage() {
+                messageBox.classList.remove('active');
+            }
+
+            // ฟังก์ชันสำหรับสลับหน้าจอหลัก (เข้าสู่ระบบ vs สร้างฟอร์ม)
+            function renderMainView() {
+                if (isLoggedIn) {
+                    authContainer.classList.add('hidden');
+                    formCreatorContainer.classList.remove('hidden');
+                } else {
+                    authContainer.classList.remove('hidden');
+                    formCreatorContainer.classList.add('hidden');
+                }
+            }
+
+            // ฟังก์ชันสำหรับสลับฟอร์ม (เข้าสู่ระบบ vs สมัครสมาชิก)
+            function renderAuthForms() {
+                if (isRegistering) {
+                    loginFormContainer.classList.add('hidden');
+                    registerFormContainer.classList.remove('hidden');
+                } else {
+                    loginFormContainer.classList.remove('hidden');
+                    registerFormContainer.classList.add('hidden');
+                }
+                hideMessage();
+            }
+            
+            // ฟังก์ชันสำหรับสร้าง HTML ของคำถาม
+            const createQuestionHTML = (sectionIndex, questionIndex, questionText = '') => {
+                return `
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-sm relative transition-all duration-200">
+                        <h4 class="text-sm font-semibold text-gray-500 mb-2">คำถามที่ ${questionIndex + 1}</h4>
+                        <textarea
+                            placeholder="กรอกคำถามของคุณที่นี่..."
+                            rows="2"
+                            class="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 resize-none question-text-input"
+                            data-section-index="${sectionIndex}"
+                            data-question-index="${questionIndex}"
+                        >${questionText}</textarea>
+                        <button class="absolute top-2 right-2 text-gray-400 hover:text-red-600 transition duration-300 remove-question-btn" data-section-index="${sectionIndex}" data-question-index="${questionIndex}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            };
+
+            // ฟังก์ชันสำหรับสร้างและแสดงผล Section และ Question ทั้งหมด
+            function renderFormCreator() {
+                sectionsContainer.innerHTML = ''; // Clear existing content
+                formTitleInput.value = formTitle; // Set form title from state
+                
+                sections.forEach((section, sectionIndex) => {
+                    const sectionDiv = document.createElement('div');
+                    sectionDiv.className = 'bg-white p-6 rounded-xl shadow-md mt-6 relative border border-gray-200';
+                    
+                    // ส่วนหัวข้อ Section
+                    sectionDiv.innerHTML = `
+                        <div class="flex items-center mb-4">
+                            <h3 class="text-xl font-bold text-gray-800">
+                                หัวข้อที่ ${sectionIndex + 1}
+                            </h3>
+                            ${sections.length > 1 ? `
+                            <button class="ml-auto text-gray-400 hover:text-red-600 transition duration-300 remove-section-btn" data-index="${sectionIndex}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                            ` : ''}
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="กรอกชื่อหัวข้อ (เช่น ข้อมูลส่วนตัว, ความคิดเห็น)"
+                            value="${section.title}"
+                            class="w-full px-4 py-2 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300 section-title-input"
+                            data-index="${sectionIndex}"
+                        />
+                        <div class="questions-container space-y-4"></div>
+                        <button class="w-full py-2 mt-4 text-blue-600 border-2 border-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition duration-300 font-medium add-question-btn transform hover:scale-105" data-index="${sectionIndex}">
+                            + เพิ่มคำถาม
+                        </button>
+                    `;
+
+                    // ส่วนของคำถามใน Section นั้นๆ
+                    const questionsContainer = sectionDiv.querySelector('.questions-container');
+                    section.questions.forEach((question, questionIndex) => {
+                        questionsContainer.innerHTML += createQuestionHTML(sectionIndex, questionIndex, question.text);
+                    });
+
+                    sectionsContainer.appendChild(sectionDiv);
+                });
+            }
+
+            // ฟังก์ชันสำหรับบันทึกแบบฟอร์ม (จำลอง)
+            async function saveForm() {
+                const saveButton = document.getElementById('saveFormBtn');
+                const statusMessage = document.getElementById('saveStatusMessage');
+
+                try {
+                    // Disable the button and change its text to indicate a process is running
+                    saveButton.disabled = true;
+                    saveButton.textContent = 'กำลังบันทึก...';
+                    saveButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+                    saveButton.classList.add('bg-green-400', 'cursor-not-allowed');
+
+                    // เก็บข้อมูลจากฟอร์ม
+                    const formData = {
+                        title: formTitleInput.value,
+                        sections: sections.map(sec => ({
+                            title: sec.title,
+                            questions: sec.questions.map(q => ({ text: q.text }))
+                        }))
+                    };
+
+                    // จำลองการบันทึกข้อมูลสำเร็จด้วยการหน่วงเวลา
+                    console.log('ข้อมูลแบบฟอร์มที่ต้องการบันทึก:', JSON.stringify(formData, null, 2));
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+
+                    // บันทึกข้อมูลลง LocalStorage
+                    localStorage.setItem('currentForm', JSON.stringify(formData));
+
+                    // เปลี่ยนสถานะปุ่มและแสดงข้อความสำเร็จ
+                    saveButton.textContent = 'บันทึกแบบฟอร์ม';
+                    saveButton.disabled = false;
+                    saveButton.classList.remove('bg-green-400', 'cursor-not-allowed');
+                    saveButton.classList.add('bg-green-600', 'hover:bg-green-700');
+
+                    statusMessage.innerHTML = 'บันทึกข้อมูลเรียบร้อยแล้ว! ✅';
+                    statusMessage.classList.remove('text-red-500', 'opacity-0', 'h-0');
+                    statusMessage.classList.add('text-green-600', 'opacity-100', 'h-auto', 'p-2');
+
+                    // ซ่อนข้อความสถานะหลังจาก 4 วินาที
+                    setTimeout(() => {
+                        statusMessage.classList.add('opacity-0', 'h-0');
+                        statusMessage.classList.remove('p-2');
+                    }, 4000);
+
+                } catch (error) {
+                    console.error("Error saving form:", error);
+
+                    saveButton.textContent = 'บันทึกแบบฟอร์ม';
+                    saveButton.disabled = false;
+                    saveButton.classList.remove('bg-green-400', 'cursor-not-allowed');
+                    saveButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                    
+                    statusMessage.innerHTML = 'เกิดข้อผิดพลาดในการบันทึกข้อมูล ❌';
+                    statusMessage.classList.remove('text-green-600', 'opacity-0', 'h-0');
+                    statusMessage.classList.add('text-red-500', 'opacity-100', 'h-auto', 'p-2');
+
+                    setTimeout(() => {
+                        statusMessage.classList.add('opacity-0', 'h-0');
+                        statusMessage.classList.remove('p-2');
+                    }, 4000);
+                }
+            }
+
+            // ฟังก์ชันสำหรับเริ่มต้นการทำงาน
+            function initialize() {
+                // ตรวจสอบสถานะการเข้าสู่ระบบจาก LocalStorage
+                isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+                renderMainView();
+                renderAuthForms();
+                if (isLoggedIn) {
+                    // ดึงข้อมูลฟอร์มจาก LocalStorage ถ้ามี
+                    const savedForm = localStorage.getItem('currentForm');
+                    if (savedForm) {
+                        const parsedForm = JSON.parse(savedForm);
+                        formTitle = parsedForm.title;
+                        sections = parsedForm.sections;
+                    }
+                    renderFormCreator();
+                }
+            }
+
+            // ฟังก์ชันจัดการเหตุการณ์ทั้งหมด
+            
+            // สลับไปหน้าสมัครสมาชิก
+            showRegisterBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                isRegistering = true;
+                renderAuthForms();
+            });
+
+            // สลับไปหน้าเข้าสู่ระบบ
+            showLoginBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                isRegistering = false;
+                renderAuthForms();
+            });
+
+            // การส่งฟอร์มสมัครสมาชิก (จำลอง)
+            registrationForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const password = e.target.password.value;
+                const confirmPassword = e.target.confirm_password.value;
+                if (password !== confirmPassword) {
+                    showMessage('รหัสผ่านไม่ตรงกัน', true);
+                    return;
+                }
+                // จำลองการสมัครสมาชิกสำเร็จ
+                showMessage('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ', false);
+                isRegistering = false;
+                renderAuthForms();
+            });
+
+            // การส่งฟอร์มเข้าสู่ระบบ (จำลอง)
+            loginForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                // จำลองการเข้าสู่ระบบสำเร็จ
+                localStorage.setItem('isLoggedIn', 'true');
+                isLoggedIn = true;
+                showMessage('เข้าสู่ระบบสำเร็จ!', false);
+                renderMainView();
+                renderFormCreator();
+            });
+
+            // การออกจากระบบ
+            logoutBtn.addEventListener('click', () => {
+                localStorage.removeItem('isLoggedIn');
+                isLoggedIn = false;
+                showMessage('ออกจากระบบสำเร็จ', false);
+                formTitle = ''; // Reset form data
+                sections = [{ title: '', questions: [{ text: '' }] }]; // Reset form sections
+                localStorage.removeItem('currentForm'); // Clear saved form data
+                renderMainView();
+            });
+
+            // Event Listener สำหรับการเปลี่ยนแปลงหัวข้อแบบฟอร์ม
+            formTitleInput.addEventListener('input', (e) => {
+                formTitle = e.target.value;
+            });
+
+            // การเพิ่มหัวข้อใหม่
+            addSectionBtn.addEventListener('click', () => {
+                sections.push({ title: '', questions: [{ text: '' }] });
+                renderFormCreator();
+            });
+
+            // การบันทึกแบบฟอร์ม (จำลอง)
+            saveFormBtn.addEventListener('click', saveForm);
+
+            // การจัดการเหตุการณ์บน Section และ Question
+            sectionsContainer.addEventListener('input', (e) => {
+                const target = e.target;
+                if (target.classList.contains('section-title-input')) {
+                    const index = target.dataset.index;
+                    sections[index].title = target.value;
+                }
+                if (target.classList.contains('question-text-input')) {
+                    const sectionIndex = target.dataset.sectionIndex;
+                    const questionIndex = target.dataset.questionIndex;
+                    sections[sectionIndex].questions[questionIndex].text = target.value;
+                }
+            });
+
+            sectionsContainer.addEventListener('click', (e) => {
+                const target = e.target.closest('button');
+                if (!target) return;
+
+                if (target.classList.contains('remove-section-btn')) {
+                    const index = parseInt(target.dataset.index);
+                    if (sections.length > 1) { // ป้องกันไม่ให้ลบ section สุดท้าย
+                        sections.splice(index, 1);
+                        renderFormCreator();
+                    } else {
+                        showMessage('ต้องมีส่วนอย่างน้อยหนึ่งส่วน', true);
+                    }
+                }
+
+                if (target.classList.contains('add-question-btn')) {
+                    const index = parseInt(target.dataset.index);
+                    sections[index].questions.push({ text: '' });
+                    renderFormCreator();
+                }
+
+                if (target.classList.contains('remove-question-btn')) {
+                    const sectionIndex = parseInt(target.dataset.sectionIndex);
+                    const questionIndex = parseInt(target.dataset.questionIndex);
+                    if (sections[sectionIndex].questions.length > 1) { // ป้องกันไม่ให้ลบคำถามสุดท้าย
+                        sections[sectionIndex].questions.splice(questionIndex, 1);
+                        renderFormCreator();
+                    } else {
+                        showMessage('ต้องมีคำถามอย่างน้อยหนึ่งข้อในส่วนนี้', true);
+                    }
+                }
+            });
+            
+            // เริ่มต้นการทำงานของหน้าเว็บ
+            initialize();
+        });
+    </script>
+
+ <a href="form.html" class="inline-block px-8 py-4 mt-4 text-white font-bold bg-indigo-600 rounded-full shadow-md hover:bg-indigo-700 transition-colors duration-300 transform hover:scale-105">
+            ไปยังหน้าฟอร์ม
+        </a>
+
+</body>
+</html>
